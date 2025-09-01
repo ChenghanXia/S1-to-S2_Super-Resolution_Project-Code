@@ -7,7 +7,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-# ---------------------- schedule ----------------------
+# schedule 
 def cosine_beta_schedule(T: int, s: float = 0.008) -> torch.Tensor:
     steps = T + 1
     t = torch.linspace(0, T, steps, dtype=torch.float64)
@@ -17,7 +17,7 @@ def cosine_beta_schedule(T: int, s: float = 0.008) -> torch.Tensor:
     betas = torch.clip(betas, 1e-5, 0.999)
     return betas.float()
 
-# ---------------------- model ----------------------
+# model 
 class UNetSmall(nn.Module):
     """UNet used in training; time index injected as a scalar map channel."""
     def __init__(self, in_ch: int, out_ch: int, base_ch: int = 96):
@@ -53,7 +53,7 @@ class UNetSmall(nn.Module):
         d1 = self.up1(d2); d1 = torch.cat([d1,e1], dim=1); d1 = self.conv1(d1)
         return self.outc(d1)
 
-# ---------------------- viz helpers ----------------------
+# viz helpers
 def _percentile_stretch_uint8(x: np.ndarray) -> np.ndarray:
     p2, p98 = np.percentile(x, [2, 98])
     if p98 - p2 < 1e-6: p98 = p2 + 1.0
@@ -94,7 +94,6 @@ def save_panel(pred: torch.Tensor, gt: Optional[torch.Tensor], x_cond: torch.Ten
                title: str = "",
                zoom: int = 0, zoom_k: int = 0):
     """Create a side-by-side panel: S1 preview | GT True/CIR | Pred True/CIR | Abs-Error heatmaps.
-    Optionally include zoom_k crops of size zoom x zoom (select top-k error regions if GT exists).
     """
     # Build previews
     s1_rgb = s1_preview_from_cond(x_cond.squeeze(0))
@@ -195,7 +194,7 @@ def save_panel(pred: torch.Tensor, gt: Optional[torch.Tensor], x_cond: torch.Ten
                 crop_and_save(s2_true_cir_from_t4(gt.squeeze(0)[:4])[0], 'gt_true')
             crop_and_save(s2_true_cir_from_t4(pred.squeeze(0)[:4])[0], 'pred_true')
 
-# ---------------------- metrics ----------------------
+# metrics 
 def masked_mae(pred, tgt, mask=None) -> float:
     if mask is None:
         w = torch.ones_like(pred[:, :1])
@@ -255,7 +254,7 @@ def ergas(pred: torch.Tensor, tgt: torch.Tensor, mask: Optional[torch.Tensor], s
         rmse_sq += (rmse_c / mean_c) ** 2
     return 100.0 * (1.0/ C * rmse_sq) ** 0.5 * (1.0 * scale_ratio)
 
-# ---------------------- I/O ----------------------
+# I/O 
 def load_npz_as_tensors(path: str, device: torch.device):
     d = np.load(path)
     x_cond = torch.from_numpy(np.nan_to_num(d["inputs"].astype(np.float32))).unsqueeze(0).to(device)
@@ -275,7 +274,7 @@ def load_npz_as_tensors(path: str, device: torch.device):
 
 def ensure_dir(p: str): os.makedirs(p, exist_ok=True)
 
-# ---------------------- core evals ----------------------
+# core evals 
 @torch.no_grad()
 def ddpm_ddim_generate(model, x_cond, alpha_bar, t_start=200, steps=20):
     dev = x_cond.device
@@ -346,7 +345,7 @@ def one_step_recon(model, x_gt, x_cond, alpha_bar, mask, t_small: int, rng_seed:
     mse = masked_mse(x0_hat, x_gt, mask)
     return mae, mse, x0_hat
 
-# ---------------------- baselines ----------------------
+# baselines 
 @torch.no_grad()
 def baseline_bicubic(x_gt: torch.Tensor, scale_factor: int = 4) -> torch.Tensor:
     """SISR bicubic baseline on GT itself: down x4 then up x4 back, as a sanity SR baseline."""
@@ -440,14 +439,14 @@ def baseline_linear_fit_predict(x_cond: torch.Tensor, x_gt: torch.Tensor, mask: 
         pred[:,c:c+1] = torch.from_numpy(full.reshape(1,1,H,W)).to(dev)
     return torch.clamp(pred, 0.0, 1.0)
 
-# ---------------------- utils ----------------------
+# utils 
 def cloud_fraction(cloud_arr: Optional[np.ndarray]) -> Optional[float]:
     if cloud_arr is None: return None
     total = cloud_arr.size
     if total == 0: return None
     return float((cloud_arr > 0.5).sum()) / total
 
-# ---------------------- main (batch) ----------------------
+# main (batch)
 def main():
     ap = argparse.ArgumentParser("Batch eval & viz suite (with true-infer switch and baselines)")
     ap.add_argument("--mode", required=True, choices=["tsweep","ddim","eps","seed_stats","per_band","ablate","cloudy_viz","night_demo","baseline_bicubic","baseline_linear"]) 
@@ -501,7 +500,7 @@ def main():
 
     viz_dir = os.path.join(args.out_dir, "previews"); ensure_dir(viz_dir)
 
-    # ---------------- MODE: TSWEEP ----------------
+    # MODE: TSWEEP 
     if args.mode == "tsweep":
         csv_path = os.path.join(args.out_dir, "tsweep.csv")
         with open(csv_path, "w", newline="") as f:
@@ -537,7 +536,7 @@ def main():
                                title=f"t-sweep middle t={mid_t}")
         print("[DONE] TSWEEP")
 
-    # ---------------- MODE: DDIM (recon vs true inference) ----------------
+    # MODE: DDIM (recon vs true inference)
     elif args.mode == "ddim":
         if args.true_infer:
             csv_path = os.path.join(args.out_dir, "ddim_true_infer_metrics.csv")
@@ -601,7 +600,7 @@ def main():
                 f.write(f"ERGAS mean/std:{mstd(ergases)[0]:.2f} / {mstd(ergases)[1]:.2f}\n")
             print("[DONE] DDIM (RECON)")
 
-    # ---------------- MODE: EPS ----------------
+    # MODE: EPS 
     elif args.mode == "eps":
         csv_path = os.path.join(args.out_dir, "eps_diag.csv")
         mses, coses = [], []
@@ -619,7 +618,7 @@ def main():
             f.write(f"cosine  mean/std: {mstd(coses)[0]:.6f} / {mstd(coses)[1]:.6f}\n")
         print("[DONE] EPS")
 
-    # ---------------- MODE: SEED_STATS ----------------
+    # MODE: SEED_STATS 
     elif args.mode == "seed_stats":
         csv_path = os.path.join(args.out_dir, "seed_stats.csv")
         mae_means, mae_stds, mse_means, mse_stds = [], [], [], []
@@ -647,7 +646,7 @@ def main():
             f.write(f"Avg per-file MSE_std: {np.mean(mse_stds):.6f}\n")
         print("[DONE] SEED_STATS")
 
-    # ---------------- MODE: PER_BAND ----------------
+    # MODE: PER_BAND 
     elif args.mode == "per_band":
         csv_path = os.path.join(args.out_dir, "per_band_all.csv")
         wrote_header = False
@@ -670,7 +669,7 @@ def main():
                 w.writerow(row)
         print("[DONE] PER_BAND")
 
-    # ---------------- MODE: ABLATE ----------------
+    # MODE: ABLATE
     elif args.mode == "ablate":
         csv_path = os.path.join(args.out_dir, "ablate_all.csv")
         with open(csv_path, "w", newline="") as f:
@@ -700,7 +699,7 @@ def main():
                                 f"{mae:.6f}", f"{mse:.6f}", f"{dMAE:.6f}", f"{dMSE:.6f}"]) 
         print("[DONE] ABLATE")
 
-    # ---------------- MODE: CLOUDY_VIZ ----------------
+    # MODE: CLOUDY_VIZ 
     elif args.mode == "cloudy_viz":
         cloud_list = []
         for fname in files:
@@ -718,7 +717,7 @@ def main():
                        title=f"Cloudy case: {fname}", zoom=args.zoom, zoom_k=args.zoom_k)
         print("[DONE] CLOUDY_VIZ")
 
-    # ---------------- MODE: NIGHT_DEMO ----------------
+    # MODE: NIGHT_DEMO 
     elif args.mode == "night_demo":
         for i, fname in enumerate(files[:max(1, args.save_viz_n)]):
             x_cond, x_gt, mask, Cc, Ct, _ = load_npz_as_tensors(os.path.join(args.patch_dir, fname), device)
@@ -728,7 +727,7 @@ def main():
                        title=f"Night demo: {fname}")
         print("[DONE] NIGHT_DEMO")
 
-    # ---------------- MODE: BASELINE_BICUBIC ----------------
+    # MODE: BASELINE_BICUBIC 
     elif args.mode == "baseline_bicubic":
         csv_path = os.path.join(args.out_dir, "baseline_bicubic.csv")
         maes, mses, psnrs, sams, ergases = [], [], [], [], []
@@ -751,7 +750,7 @@ def main():
             f.write(f"ERGAS mean/std:{mstd(ergases)[0]:.2f} / {mstd(ergases)[1]:.2f}\n")
         print("[DONE] BASELINE_BICUBIC")
 
-    # ---------------- MODE: BASELINE_LINEAR (S1->S2 per-band linear fit) ----------------
+    # MODE: BASELINE_LINEAR (S1->S2 per-band linear fit) 
     elif args.mode == "baseline_linear":
         csv_path = os.path.join(args.out_dir, "baseline_linear.csv")
         maes, mses, psnrs, sams, ergases = [], [], [], [], []
