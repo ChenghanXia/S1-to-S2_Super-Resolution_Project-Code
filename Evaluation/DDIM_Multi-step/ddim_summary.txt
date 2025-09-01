@@ -1,0 +1,3 @@
+DDIM steps: 20, t_start: 200
+MAE: 0.038182
+MSE: 0.003365
