@@ -1,0 +1,6 @@
+files: 10  t_start: 999  steps: 50  seeds: 4
+MAE mean/std:  0.389404 / 0.001688
+MSE mean/std:  0.237008 / 0.002356
+PSNR mean/std: 6.255 / 0.043
+SAM  mean/std: 0.5371 / 0.0014
+ERGAS mean/std:250.40 / 2.76
