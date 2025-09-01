@@ -2,7 +2,6 @@ import os, math, argparse, csv, random
 from typing import Tuple, List, Optional, Dict
 import numpy as np
 from PIL import Image, ImageDraw, ImageFont
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
